@@ -1,25 +1,18 @@
-export interface HealthCheckResult {
-  status: "ok" | "error";
-  version: string;
-  db: "ok" | "error";
-}
+import type { Database } from "../../db/client";
+import { pingDatabase } from "./health.repository";
+import type { HealthCheckResult } from "./health.schemas";
 
 export async function checkHealth(
-  db: D1Database,
+  db: Database,
   version: string,
 ): Promise<HealthCheckResult> {
-  let dbStatus: "ok" | "error" = "ok";
-
-  try {
-    await db.prepare("SELECT 1").run();
-  } catch (error) {
-    console.error("D1 health check failed:", error);
-    dbStatus = "error";
-  }
+  const isDbOk = await pingDatabase(db);
 
   return {
-    status: "ok",
+    status: isDbOk ? "ok" : "error",
     version,
-    db: dbStatus,
+    db: isDbOk ? "ok" : "error",
   };
 }
+
+export type { HealthCheckResult };

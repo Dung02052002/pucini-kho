@@ -13,11 +13,13 @@ export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
   let status: ContentfulStatusCode = 500;
   let code: string = ERROR_CODES.INTERNAL_SERVER_ERROR;
   let message: string = ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
+  let details: unknown;
 
   if (err instanceof AppError) {
     status = err.statusCode as ContentfulStatusCode;
     code = err.code;
     message = err.message;
+    details = err.details;
   } else if (err instanceof HTTPException) {
     status = err.status as ContentfulStatusCode;
     if (status === 404) {
@@ -27,11 +29,11 @@ export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
       code = ERROR_CODES.BAD_REQUEST;
       message = ERROR_MESSAGES.BAD_REQUEST;
     } else if (status === 401) {
-      code = ERROR_CODES.UNAUTHORIZED;
-      message = ERROR_MESSAGES.UNAUTHORIZED;
+      code = ERROR_CODES.UNAUTHENTICATED;
+      message = ERROR_MESSAGES.UNAUTHENTICATED;
     } else if (status === 403) {
-      code = ERROR_CODES.FORBIDDEN;
-      message = ERROR_MESSAGES.FORBIDDEN;
+      code = ERROR_CODES.PERMISSION_DENIED;
+      message = ERROR_MESSAGES.PERMISSION_DENIED;
     } else {
       code = ERROR_CODES.INTERNAL_SERVER_ERROR;
       message = ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
@@ -49,6 +51,7 @@ export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
       error: {
         code,
         message,
+        ...(details !== undefined ? { details } : {}),
         requestId,
       },
     },
