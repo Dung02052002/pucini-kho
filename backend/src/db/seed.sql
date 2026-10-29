@@ -1,4 +1,5 @@
--- Seed users (1 admin, 2 staff)
+-- Seed users (1 admin, 2 staff) — CHỈ DÙNG CHO DEV LOCAL, hash giả; đặt mật khẩu bằng:
+--   npm run user:password -- <username>
 INSERT OR IGNORE INTO users (id, username, full_name, pin_hash, role, active, failed_attempts, created_at)
 VALUES
   (1, 'admin', 'Quản trị viên Kho', 'pbkdf2$sha256$100000$c2FsdF9zZWVk$aGFzaF9hZG1pbg==', 'ADMIN', 1, 0, '2026-10-25T00:00:00.000Z'),

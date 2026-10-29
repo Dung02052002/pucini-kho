@@ -20,6 +20,14 @@ export function runSeed(isRemote = false) {
 
 // Chạy trực tiếp qua `npm run db:seed`
 if (process.argv[1]?.includes("seed.ts")) {
-  const isRemote = process.argv.includes("--remote");
-  runSeed(isRemote);
+  // Seed chứa mật khẩu dev công khai và QR token cố định → tuyệt đối không nạp lên production.
+  // Tạo/đặt mật khẩu user production bằng `npm run user:password -- <username> --remote`.
+  if (process.argv.includes("--remote")) {
+    console.error(
+      "[Seed] Từ chối: dữ liệu seed chỉ dành cho D1 local (chứa mật khẩu dev công khai).",
+    );
+    process.exitCode = 1;
+  } else {
+    runSeed(false);
+  }
 }
