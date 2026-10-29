@@ -1,10 +1,10 @@
 import type { ErrorHandler, NotFoundHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { AppEnv } from "../env";
-import { AppError } from "../lib/errors";
-import { generateRequestId } from "../lib/ids";
-import { ERROR_CODES, ERROR_MESSAGES } from "../shared/constants";
+import type { AppEnv } from "../../env";
+import { AppError } from "../../lib/errors";
+import { generateRequestId } from "../../lib/ids";
+import { ERROR_CODES, ERROR_MESSAGES } from "../../shared/constants";
 
 export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
   const requestId =

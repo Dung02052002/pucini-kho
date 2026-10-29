@@ -1,6 +1,6 @@
-import type { Database } from "../../db/client";
-import { nowUtc } from "../../lib/time";
-import { insertAuditLog } from "./audit.repository";
+import type { Database } from "../../../db/client";
+import { nowUtc } from "../../../lib/time";
+import { insertAuditLog } from "../repositories/audit-log.repository";
 
 export interface LogAuditParams {
   userId?: number | null;

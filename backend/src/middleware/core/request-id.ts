@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
-import type { AppEnv } from "../env";
-import { generateRequestId } from "../lib/ids";
+import type { AppEnv } from "../../env";
+import { generateRequestId } from "../../lib/ids";
 
 export const requestIdMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const existingId =

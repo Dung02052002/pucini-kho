@@ -4,15 +4,15 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { AppEnv, Bindings } from "../src/env";
 import {
-  authMiddleware,
-  csrfProtection,
   requireAuth,
   requirePerm,
   requireRole,
-} from "../src/middleware/auth";
-import { dbMiddleware } from "../src/middleware/db";
-import { errorHandler } from "../src/middleware/error-handler";
-import { requestIdMiddleware } from "../src/middleware/request-id";
+} from "../src/middleware/auth/guards";
+import { authMiddleware } from "../src/middleware/auth/session";
+import { dbMiddleware } from "../src/middleware/core/db";
+import { errorHandler } from "../src/middleware/core/error-handler";
+import { requestIdMiddleware } from "../src/middleware/core/request-id";
+import { csrfProtection } from "../src/middleware/security/csrf";
 import { ERROR_CODES } from "../src/shared/constants";
 import {
   setupTestDatabase,

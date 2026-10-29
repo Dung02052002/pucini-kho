@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
-import { getDb } from "../db/client";
-import type { AppEnv } from "../env";
+import { getDb } from "../../db/client";
+import type { AppEnv } from "../../env";
 
 /**
  * Injects Drizzle database client instance into Hono Context

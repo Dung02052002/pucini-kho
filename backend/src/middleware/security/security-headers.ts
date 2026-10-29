@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import type { AppEnv } from "../env";
+import type { AppEnv } from "../../env";
 
 /**
  * Security headers middleware

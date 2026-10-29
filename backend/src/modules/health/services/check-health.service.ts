@@ -1,6 +1,6 @@
-import type { Database } from "../../db/client";
-import { pingDatabase } from "./health.repository";
-import type { HealthCheckResult } from "./health.schemas";
+import type { Database } from "../../../db/client";
+import { pingDatabase } from "../repositories/health.repository";
+import type { HealthCheckResult } from "../schemas/health.schema";
 
 export async function checkHealth(
   db: Database,

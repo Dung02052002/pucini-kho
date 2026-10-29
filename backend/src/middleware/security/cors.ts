@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
-import { getConfig } from "../config";
-import type { AppEnv } from "../env";
+import { getConfig } from "../../config";
+import type { AppEnv } from "../../env";
 
 /**
  * Configures CORS based on environment variables

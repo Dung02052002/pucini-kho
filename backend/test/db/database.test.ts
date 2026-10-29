@@ -1,10 +1,10 @@
 import { env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import initSql from "../migrations/0000_init.sql?raw";
-import { getDb } from "../src/db/client";
-import * as schema from "../src/db/schema";
-import seedSql from "../src/db/seed.sql?raw";
-import type { Bindings } from "../src/env";
+import initSql from "../../migrations/0000_init.sql?raw";
+import { getDb } from "../../src/db/client";
+import * as schema from "../../src/db/schema";
+import seedSql from "../../src/db/seed.sql?raw";
+import type { Bindings } from "../../src/env";
 
 describe("Database Schema, Migrations, and Constraints Tests", () => {
   const bindings = env as unknown as Bindings;

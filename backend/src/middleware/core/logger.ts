@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import type { AppEnv } from "../env";
+import type { AppEnv } from "../../env";
 
 export const loggerMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const start = Date.now();

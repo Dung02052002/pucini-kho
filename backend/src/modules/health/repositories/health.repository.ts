@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { Database } from "../../db/client";
+import type { Database } from "../../../db/client";
 
 /**
  * Pings database using Drizzle ORM to verify connection health
