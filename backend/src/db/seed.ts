@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { resolve } from "node:path";
+import { D1_DATABASE_NAME } from "./wrangler-d1";
 
 export const SEED_SQL_PATH = resolve(process.cwd(), "src/db/seed.sql");
 
@@ -8,7 +9,7 @@ export function runSeed(isRemote = false) {
   console.log(`[Seed] Bắt đầu nạp dữ liệu mẫu vào D1 (${targetFlag})...`);
 
   try {
-    const cmd = `npx wrangler d1 execute kho-ql ${targetFlag} --file="${SEED_SQL_PATH}"`;
+    const cmd = `npx wrangler d1 execute ${D1_DATABASE_NAME} ${targetFlag} --file="${SEED_SQL_PATH}"`;
     execSync(cmd, { stdio: "inherit" });
     console.log("[Seed] Hoàn tất nạp dữ liệu mẫu thành công!");
   } catch (err) {

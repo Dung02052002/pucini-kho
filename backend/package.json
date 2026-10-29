@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply kho-ql --local",
     "db:migrate:remote": "wrangler d1 migrations apply kho-ql --remote",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "user:password": "tsx src/db/set-password.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "0.9.1",
@@ -27,6 +28,7 @@
     "@cloudflare/workers-types": "5.20261024.1",
     "@types/node": "^22.13.10",
     "drizzle-kit": "0.31.11",
+    "tsx": "4.23.15",
     "typescript": "5.8.2",
     "vitest": "4.1.12",
     "wrangler": "4.152.0"
