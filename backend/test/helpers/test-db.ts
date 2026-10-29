@@ -127,3 +127,34 @@ export async function setupTestDatabase(bindings: Bindings) {
 
   return { adminUser, staff1, staff2, db, d1 };
 }
+
+/**
+ * Tạo 1 user STAFF riêng cho từng test (tránh các test khóa tài khoản ảnh hưởng lẫn nhau).
+ */
+export async function createStaffUser(
+  bindings: Bindings,
+  values: {
+    id: number;
+    username: string;
+    pin?: string;
+    failedAttempts?: number;
+    lockedUntil?: string | null;
+  },
+) {
+  const db = getDb(bindings);
+  const [user] = await db
+    .insert(schema.users)
+    .values({
+      id: values.id,
+      username: values.username,
+      fullName: values.username,
+      pinHash: await hashPin(values.pin ?? TEST_PIN_STAFF, 5000),
+      role: "STAFF",
+      active: 1,
+      failedAttempts: values.failedAttempts ?? 0,
+      lockedUntil: values.lockedUntil ?? null,
+      createdAt: nowUtc(),
+    })
+    .returning();
+  return user;
+}

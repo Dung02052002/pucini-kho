@@ -6,8 +6,14 @@ import {
   CSRF_HEADER_VALUE,
 } from "../../src/shared/constants";
 
-/** Env dùng chung cho test */
-export const testEnv: Bindings = { ...(env as unknown as Bindings) };
+/**
+ * Env cho test: bỏ LOGIN_RATE_LIMITER để các test đăng nhập nhiều lần không bị 429.
+ * Test riêng cho rate limit sẽ tự truyền limiter giả.
+ */
+export const testEnv: Bindings = {
+  ...(env as unknown as Bindings),
+  LOGIN_RATE_LIMITER: undefined,
+};
 
 // Helper to parse JSON without TS unknown warnings
 // biome-ignore lint/suspicious/noExplicitAny: test helper

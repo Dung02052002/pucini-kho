@@ -126,6 +126,15 @@ export class SyncThrottledError extends AppError {
   }
 }
 
+export class RateLimitedError extends AppError {
+  constructor(
+    message: string = ERROR_MESSAGES.RATE_LIMITED,
+    details?: unknown,
+  ) {
+    super(message, 429, ERROR_CODES.RATE_LIMITED, details);
+  }
+}
+
 export class PayloadTooLargeError extends AppError {
   constructor(
     message: string = ERROR_MESSAGES.PAYLOAD_TOO_LARGE,

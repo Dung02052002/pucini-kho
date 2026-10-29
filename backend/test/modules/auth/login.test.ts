@@ -1,8 +1,14 @@
+import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../../src/app";
+import { getDb } from "../../../src/db/client";
+import * as schema from "../../../src/db/schema";
+import { addMinutes } from "../../../src/lib/time";
+import { INVALID_CREDENTIALS_MESSAGE } from "../../../src/modules/auth/auth.policy";
 import { ERROR_CODES } from "../../../src/shared/constants";
 import { apiRequest, parseJson, testEnv } from "../../helpers/http";
 import {
+  createStaffUser,
   setupTestDatabase,
   TEST_PIN_ADMIN,
   TEST_PIN_STAFF,
@@ -12,6 +18,7 @@ const LOGIN_PATH = "/api/v1/auth/login";
 
 describe("POST /api/v1/auth/login", () => {
   const app = createApp();
+  const db = getDb(testEnv);
 
   const login = (body: unknown) =>
     apiRequest(app, LOGIN_PATH, { method: "POST", body });
@@ -42,6 +49,10 @@ describe("POST /api/v1/auth/login", () => {
         expect.arrayContaining(["PICK", "RETURN", "REFILL"]),
       );
       expect(body.data.expiresAt).toBeTruthy();
+      // Token chỉ nằm trong cookie, không bao giờ trả về trong body
+      expect(JSON.stringify(body)).not.toContain(
+        setCookie?.split(";")[0].split("=")[1],
+      );
     });
 
     it("sets a 30-day session when remember=true", async () => {
@@ -70,49 +81,127 @@ describe("POST /api/v1/auth/login", () => {
       expect(body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
       expect(body.error.details.length).toBeGreaterThanOrEqual(1);
     });
-  });
 
-  describe("failed login", () => {
-    it("returns 401 when username does not exist", async () => {
-      const res = await login({ username: "non_existent_user", pin: "123456" });
-
-      expect(res.status).toBe(401);
-      expect((await parseJson(res)).error.code).toBe(
-        ERROR_CODES.UNAUTHENTICATED,
-      );
-    });
-
-    it("returns 401 for an inactive account", async () => {
+    it("rejects oversized username and PIN", async () => {
       const res = await login({
-        username: "inactive_user",
-        pin: TEST_PIN_STAFF,
+        username: "a".repeat(65),
+        pin: "1".repeat(129),
       });
 
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(422);
+      const body = await parseJson(res);
+      const fields = body.error.details.map((d: { field: string }) => d.field);
+      expect(fields).toEqual(expect.arrayContaining(["username", "pin"]));
+    });
+  });
+
+  describe("failed login does not reveal whether the username exists", () => {
+    it("returns the same 401 message for unknown user, inactive user and wrong PIN", async () => {
+      await createStaffUser(testEnv, { id: 100, username: "enum_check" });
+
+      const responses = await Promise.all([
+        login({ username: "non_existent_user", pin: "123456" }),
+        login({ username: "inactive_user", pin: TEST_PIN_STAFF }),
+        login({ username: "enum_check", pin: "wrong_pin" }),
+      ]);
+
+      for (const res of responses) {
+        expect(res.status).toBe(401);
+        const body = await parseJson(res);
+        expect(body.error.code).toBe(ERROR_CODES.UNAUTHENTICATED);
+        expect(body.error.message).toBe(INVALID_CREDENTIALS_MESSAGE);
+      }
     });
   });
 
   describe("account lockout", () => {
     it("returns 401 for wrong PIN and locks the account on the 5th consecutive failure", async () => {
+      await createStaffUser(testEnv, { id: 101, username: "lock_seq" });
+
       for (let i = 1; i <= 4; i++) {
-        const res = await login({ username: "nhanvien2", pin: "wrong_pin" });
+        const res = await login({ username: "lock_seq", pin: "wrong_pin" });
         expect(res.status).toBe(401);
       }
 
-      const lockRes = await login({ username: "nhanvien2", pin: "wrong_pin" });
+      const lockRes = await login({ username: "lock_seq", pin: "wrong_pin" });
       expect(lockRes.status).toBe(423);
-      expect((await parseJson(lockRes)).error.code).toBe(
-        ERROR_CODES.ACCOUNT_LOCKED,
-      );
+      const lockBody = await parseJson(lockRes);
+      expect(lockBody.error.code).toBe(ERROR_CODES.ACCOUNT_LOCKED);
+
+      // Kể cả PIN đúng cũng bị chặn khi đang khóa
+      const correctRes = await login({
+        username: "lock_seq",
+        pin: TEST_PIN_STAFF,
+      });
+      expect(correctRes.status).toBe(423);
     });
 
     it("returns 423 for an already locked account", async () => {
       const res = await login({ username: "locked_user", pin: TEST_PIN_STAFF });
 
       expect(res.status).toBe(423);
-      expect((await parseJson(res)).error.code).toBe(
-        ERROR_CODES.ACCOUNT_LOCKED,
+      const body = await parseJson(res);
+      expect(body.error.code).toBe(ERROR_CODES.ACCOUNT_LOCKED);
+    });
+
+    it("bounds parallel brute-force attempts to the lockout threshold", async () => {
+      await createStaffUser(testEnv, { id: 102, username: "lock_parallel" });
+
+      const responses = await Promise.all(
+        Array.from({ length: 12 }, () =>
+          login({ username: "lock_parallel", pin: "wrong_pin" }),
+        ),
       );
+      const statuses = responses.map((r) => r.status);
+
+      // Chỉ tối đa 5 lượt được kiểm tra PIN (4 lần 401 + 1 lần 423 khóa), còn lại đều 423
+      expect(statuses.filter((s) => s === 401).length).toBeLessThanOrEqual(4);
+      expect(statuses.every((s) => s === 401 || s === 423)).toBe(true);
+
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.username, "lock_parallel"));
+      expect(user.failedAttempts).toBe(5);
+      expect(user.lockedUntil).not.toBeNull();
+    });
+
+    it("restarts the failure counter after a previous lock has expired", async () => {
+      await createStaffUser(testEnv, {
+        id: 103,
+        username: "lock_expired",
+        failedAttempts: 5,
+        lockedUntil: addMinutes(-1),
+      });
+
+      const res = await login({ username: "lock_expired", pin: "wrong_pin" });
+      expect(res.status).toBe(401);
+
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.username, "lock_expired"));
+      expect(user.failedAttempts).toBe(1);
+      expect(user.lockedUntil).toBeNull();
+    });
+
+    it("resets the failure counter after a successful login", async () => {
+      await createStaffUser(testEnv, { id: 104, username: "lock_reset" });
+
+      await login({ username: "lock_reset", pin: "wrong_pin" });
+      await login({ username: "lock_reset", pin: "wrong_pin" });
+      const okRes = await login({
+        username: "lock_reset",
+        pin: TEST_PIN_STAFF,
+      });
+      expect(okRes.status).toBe(200);
+
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.username, "lock_reset"));
+      expect(user.failedAttempts).toBe(0);
+      expect(user.lockedUntil).toBeNull();
     });
   });
 });

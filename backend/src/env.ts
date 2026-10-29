@@ -13,6 +13,8 @@ export type Bindings = {
   KV_WEBHOOK_SECRET?: string;
   APP_TZ?: string;
   CORS_ORIGINS?: string;
+  /** Cloudflare Rate Limiting binding cho /auth/login (khai báo trong wrangler.jsonc) */
+  LOGIN_RATE_LIMITER?: RateLimit;
 };
 
 export type AuthUser = {

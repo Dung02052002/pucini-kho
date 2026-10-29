@@ -1,21 +1,23 @@
 import type { Database } from "../../../db/client";
 import type { AuthUser } from "../../../env";
-import { verifyPin } from "../../../lib/crypto";
+import { verifyAgainstDummyHash, verifyPin } from "../../../lib/crypto";
 import { AccountLockedError, UnauthenticatedError } from "../../../lib/errors";
 import { generateSessionId } from "../../../lib/ids";
+import type { RequestMeta } from "../../../lib/request-meta";
+import { addDays, addHours, addMinutes, nowUtc } from "../../../lib/time";
 import {
-  addDays,
-  addHours,
-  addMinutes,
-  isExpired,
-  nowUtc,
-} from "../../../lib/time";
+  ACCOUNT_LOCK_MINUTES,
+  INVALID_CREDENTIALS_MESSAGE,
+  MAX_FAILED_LOGIN_ATTEMPTS,
+  REMEMBER_SESSION_TTL_DAYS,
+  SESSION_TTL_HOURS,
+} from "../auth.policy";
 import { createSession } from "../repositories/session.repository";
 import {
   findUserByUsername,
   getUserPermissions,
+  reserveLoginAttempt,
   resetFailedAttempts,
-  updateFailedAttempts,
 } from "../repositories/user.repository";
 import type { LoginInput } from "../schemas/login.schema";
 
@@ -30,66 +32,71 @@ export interface LoginResult {
 
 /**
  * Handle user login with username & PIN/password
- * Implements anti brute-force logic: locks for 15 minutes after 5 consecutive failures
+ *
+ * Luồng xử lý:
+ * 1. Không tìm thấy user / user ngưng hoạt động → vẫn chạy PBKDF2 với hash giả
+ *    (thời gian phản hồi như sai PIN) rồi trả thông báo chung.
+ * 2. Giữ chỗ 1 lượt thử bằng UPDATE nguyên tử; tài khoản đang khóa → 423.
+ * 3. Verify PIN. Sai → 401 (hoặc 423 nếu lượt này chạm ngưỡng khóa).
+ * 4. Đúng → reset bộ đếm, tạo session.
+ *
+ * Đánh đổi có chủ đích: lỗi 423 vẫn cho biết username tồn tại, vì nhân viên kho
+ * cần biết mình bị khóa. Rủi ro dò username được giảm bằng rate limit theo IP.
  */
 export async function loginUser(
   db: Database,
   input: LoginInput,
-  userAgent: string | null = null,
+  meta: RequestMeta,
 ): Promise<LoginResult> {
   const user = await findUserByUsername(db, input.username);
 
-  // User not found or inactive
+  // Bước 1: user không hợp lệ — không tiết lộ lý do cụ thể cho client
   if (!user || user.active === 0) {
-    throw new UnauthenticatedError("Tên đăng nhập hoặc mã PIN không chính xác");
+    await verifyAgainstDummyHash(input.pin);
+    throw new UnauthenticatedError(INVALID_CREDENTIALS_MESSAGE);
   }
 
-  // Check if account is currently locked
-  if (user.lockedUntil && !isExpired(user.lockedUntil)) {
+  // Bước 2: giữ chỗ lượt thử (chống brute-force song song)
+  const attempts = await reserveLoginAttempt(db, {
+    userId: user.id,
+    now: nowUtc(),
+    lockUntil: addMinutes(ACCOUNT_LOCK_MINUTES),
+    maxAttempts: MAX_FAILED_LOGIN_ATTEMPTS,
+  });
+
+  if (attempts === null) {
     throw new AccountLockedError(
-      "Tài khoản bị tạm khóa do nhập sai PIN quá 5 lần. Vui lòng thử lại sau 15 phút.",
+      `Tài khoản bị tạm khóa do nhập sai PIN quá ${MAX_FAILED_LOGIN_ATTEMPTS} lần. Vui lòng thử lại sau ${ACCOUNT_LOCK_MINUTES} phút.`,
     );
   }
 
-  // Verify PIN with PBKDF2 hash
+  // Bước 3: verify PIN
   const isPinValid = await verifyPin(input.pin, user.pinHash);
 
   if (!isPinValid) {
-    const nextFailedAttempts = user.failedAttempts + 1;
-
-    if (nextFailedAttempts >= 5) {
-      await updateFailedAttempts(
-        db,
-        user.id,
-        nextFailedAttempts,
-        addMinutes(15),
-      );
+    if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
       throw new AccountLockedError(
-        "Bạn đã nhập sai mã PIN 5 lần liên tiếp. Tài khoản đã bị tạm khóa 15 phút.",
+        `Bạn đã nhập sai mã PIN ${MAX_FAILED_LOGIN_ATTEMPTS} lần liên tiếp. Tài khoản đã bị tạm khóa ${ACCOUNT_LOCK_MINUTES} phút.`,
       );
     }
-
-    await updateFailedAttempts(db, user.id, nextFailedAttempts, null);
-    const attemptsLeft = 5 - nextFailedAttempts;
-    throw new UnauthenticatedError(
-      `Mã PIN không chính xác. Bạn còn ${attemptsLeft} lần thử trước khi bị khóa.`,
-    );
+    throw new UnauthenticatedError(INVALID_CREDENTIALS_MESSAGE);
   }
 
-  // Login successful: reset failed attempts if any
-  if (user.failedAttempts > 0 || user.lockedUntil) {
-    await resetFailedAttempts(db, user.id);
-  }
+  // Bước 4: đăng nhập thành công
+  await resetFailedAttempts(db, user.id);
 
-  // Session duration: 30 days if remember is true, else 12 hours
-  const maxAge = input.remember ? 30 * 24 * 3600 : 12 * 3600;
-  const expiresAt = input.remember ? addDays(30) : addHours(12);
+  const maxAge = input.remember
+    ? REMEMBER_SESSION_TTL_DAYS * 24 * 3600
+    : SESSION_TTL_HOURS * 3600;
+  const expiresAt = input.remember
+    ? addDays(REMEMBER_SESSION_TTL_DAYS)
+    : addHours(SESSION_TTL_HOURS);
 
   const sessionId = generateSessionId();
   await createSession(db, {
     id: sessionId,
     userId: user.id,
-    userAgent,
+    userAgent: meta.userAgent,
     createdAt: nowUtc(),
     expiresAt,
   });
