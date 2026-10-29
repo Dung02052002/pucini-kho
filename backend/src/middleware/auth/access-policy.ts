@@ -13,8 +13,6 @@ import { requireAuth } from "./guards";
 const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   `GET ${API_PREFIX}/health`,
   `POST ${API_PREFIX}/auth/login`,
-  // Logout public để client gọi được cả khi session đã hết hạn (thao tác idempotent)
-  `POST ${API_PREFIX}/auth/logout`,
 ]);
 
 /** Bỏ dấu "/" cuối để "/health" và "/health/" được xử lý như nhau */

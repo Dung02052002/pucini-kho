@@ -24,6 +24,7 @@ describe("Deny-by-default access policy", () => {
       expect(isPublicRoute("post", "/api/v1/auth/login")).toBe(true);
 
       expect(isPublicRoute("GET", "/api/v1/auth/login")).toBe(false);
+      expect(isPublicRoute("POST", "/api/v1/auth/logout")).toBe(false);
       expect(isPublicRoute("GET", "/api/v1/auth/me")).toBe(false);
       expect(isPublicRoute("DELETE", "/api/v1/health")).toBe(false);
     });

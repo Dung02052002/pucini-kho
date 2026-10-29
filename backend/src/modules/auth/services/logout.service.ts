@@ -7,18 +7,15 @@ import { deleteSession } from "../repositories/session.repository";
 
 /**
  * Handle user logout by deleting the current session
- * Idempotent: không có session (đã hết hạn / chưa đăng nhập) thì không làm gì.
+ * Chỉ xóa phiên đang dùng; các thiết bị khác của cùng user vẫn đăng nhập.
  */
 export async function logoutUser(
   db: Database,
-  session: AuthSession | undefined,
+  session: AuthSession,
   meta: RequestMeta,
 ): Promise<void> {
-  if (!session) {
-    return;
-  }
-
   await deleteSession(db, session.id);
+
   await logAudit(db, {
     userId: session.userId,
     action: AUDIT_ACTIONS.AUTH_LOGOUT,
