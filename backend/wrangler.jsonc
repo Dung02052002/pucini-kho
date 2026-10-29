@@ -13,14 +13,6 @@
       "database_id": "pucini-kho-database-id"
     }
   ],
-  // Rate limit /auth/login theo IP: tối đa 10 lần / 60 giây (xem src/middleware/security/rate-limit.ts)
-  "ratelimits": [
-    {
-      "name": "LOGIN_RATE_LIMITER",
-      "namespace_id": "1001",
-      "simple": { "limit": 10, "period": 60 }
-    }
-  ],
   "triggers": {
     "crons": [
       "*/5 * * * *",

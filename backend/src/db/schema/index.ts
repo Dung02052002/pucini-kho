@@ -10,6 +10,7 @@ export * from "./location-items";
 export * from "./locations";
 export * from "./pick-batches";
 export * from "./products";
+export * from "./rate-limits";
 export * from "./sessions";
 export * from "./shelf-movements";
 export * from "./sync-state";

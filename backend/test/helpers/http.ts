@@ -6,14 +6,16 @@ import {
   CSRF_HEADER_VALUE,
 } from "../../src/shared/constants";
 
+/** Env dùng chung cho test */
+export const testEnv: Bindings = { ...(env as unknown as Bindings) };
+
 /**
- * Env cho test: bỏ LOGIN_RATE_LIMITER để các test đăng nhập nhiều lần không bị 429.
- * Test riêng cho rate limit sẽ tự truyền limiter giả.
+ * Mỗi request mang 1 "IP client" riêng, để các test gọi login nhiều lần
+ * không bị rate limit theo IP. Test rate limit tự truyền cf-connecting-ip cố định.
  */
-export const testEnv: Bindings = {
-  ...(env as unknown as Bindings),
-  LOGIN_RATE_LIMITER: undefined,
-};
+function uniqueClientIp(): string {
+  return `test-client-${crypto.randomUUID()}`;
+}
 
 // Helper to parse JSON without TS unknown warnings
 // biome-ignore lint/suspicious/noExplicitAny: test helper
@@ -39,7 +41,10 @@ export function apiRequest(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<Response> {
-  const headers: Record<string, string> = { ...options.headers };
+  const headers: Record<string, string> = {
+    "cf-connecting-ip": uniqueClientIp(),
+    ...options.headers,
+  };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.csrf !== false) headers[CSRF_HEADER_NAME] = CSRF_HEADER_VALUE;
   if (options.cookie) headers.Cookie = options.cookie;

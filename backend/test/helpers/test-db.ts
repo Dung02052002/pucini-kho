@@ -1,9 +1,13 @@
 import initSql from "../../migrations/0000_init.sql?raw";
+import addRateLimitsSql from "../../migrations/0001_add_rate_limits.sql?raw";
 import { getDb } from "../../src/db/client";
 import * as schema from "../../src/db/schema";
 import type { Bindings } from "../../src/env";
 import { hashPin } from "../../src/lib/crypto";
 import { addHours, nowUtc } from "../../src/lib/time";
+
+/** Toàn bộ migration theo đúng thứ tự — thêm migration mới vào cuối danh sách */
+const MIGRATIONS = [initSql, addRateLimitsSql];
 
 export const TEST_PIN_STAFF = "123456";
 export const TEST_PIN_ADMIN = "admin12345";
@@ -29,7 +33,9 @@ export async function setupTestDatabase(bindings: Bindings) {
   const db = getDb(bindings);
 
   // 1. Apply migrations
-  await executeRawStatements(d1, initSql, "--> statement-breakpoint");
+  for (const migrationSql of MIGRATIONS) {
+    await executeRawStatements(d1, migrationSql, "--> statement-breakpoint");
+  }
 
   // 2. Clear previous data if any
   await d1.prepare("DELETE FROM sessions").run();
