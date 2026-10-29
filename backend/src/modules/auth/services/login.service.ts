@@ -1,8 +1,12 @@
 import type { Database } from "../../../db/client";
 import type { AuthUser } from "../../../env";
-import { verifyAgainstDummyHash, verifyPin } from "../../../lib/crypto";
+import {
+  generateSessionToken,
+  hashSessionToken,
+  verifyAgainstDummyHash,
+  verifyPin,
+} from "../../../lib/crypto";
 import { AccountLockedError, UnauthenticatedError } from "../../../lib/errors";
-import { generateSessionId } from "../../../lib/ids";
 import type { RequestMeta } from "../../../lib/request-meta";
 import { addDays, addHours, addMinutes, nowUtc } from "../../../lib/time";
 import {
@@ -24,7 +28,8 @@ import type { LoginInput } from "../schemas/login.schema";
 export interface LoginResult {
   user: AuthUser;
   session: {
-    id: string;
+    /** Token gốc — chỉ dùng để set cookie, không bao giờ lưu DB */
+    token: string;
     expiresAt: string;
   };
   maxAge: number;
@@ -38,7 +43,7 @@ export interface LoginResult {
  *    (thời gian phản hồi như sai PIN) rồi trả thông báo chung.
  * 2. Giữ chỗ 1 lượt thử bằng UPDATE nguyên tử; tài khoản đang khóa → 423.
  * 3. Verify PIN. Sai → 401 (hoặc 423 nếu lượt này chạm ngưỡng khóa).
- * 4. Đúng → reset bộ đếm, tạo session.
+ * 4. Đúng → reset bộ đếm, tạo session (DB lưu hash của token).
  *
  * Đánh đổi có chủ đích: lỗi 423 vẫn cho biết username tồn tại, vì nhân viên kho
  * cần biết mình bị khóa. Rủi ro dò username được giảm bằng rate limit theo IP.
@@ -92,9 +97,9 @@ export async function loginUser(
     ? addDays(REMEMBER_SESSION_TTL_DAYS)
     : addHours(SESSION_TTL_HOURS);
 
-  const sessionId = generateSessionId();
+  const token = generateSessionToken();
   await createSession(db, {
-    id: sessionId,
+    id: await hashSessionToken(token),
     userId: user.id,
     userAgent: meta.userAgent,
     createdAt: nowUtc(),
@@ -109,7 +114,7 @@ export async function loginUser(
       role: user.role,
       permissions: await getUserPermissions(db, user.id),
     },
-    session: { id: sessionId, expiresAt },
+    session: { token, expiresAt },
     maxAge,
   };
 }

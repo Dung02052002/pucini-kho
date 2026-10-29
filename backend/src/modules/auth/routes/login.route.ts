@@ -24,7 +24,7 @@ export const loginRoute = new Hono<AppEnv>().post(
       getRequestMeta(c),
     );
 
-    setSessionCookie(c, result.session.id, result.maxAge);
+    setSessionCookie(c, result.session.token, result.maxAge);
 
     return successResponse(c, {
       user: result.user,

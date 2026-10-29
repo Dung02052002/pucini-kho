@@ -3,7 +3,7 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { users } from "./users";
 
 export const sessions = sqliteTable("sessions", {
-  id: text("id").primaryKey(), // 32 byte ngẫu nhiên, base64url
+  id: text("id").primaryKey(), // SHA-256 (base64url) của token 32 byte trong cookie — không lưu token gốc
   userId: integer("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),

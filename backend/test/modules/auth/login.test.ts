@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../../src/app";
 import { getDb } from "../../../src/db/client";
 import * as schema from "../../../src/db/schema";
+import { hashSessionToken } from "../../../src/lib/crypto";
 import { addMinutes } from "../../../src/lib/time";
 import { INVALID_CREDENTIALS_MESSAGE } from "../../../src/modules/auth/auth.policy";
 import { ERROR_CODES } from "../../../src/shared/constants";
@@ -69,6 +70,24 @@ describe("POST /api/v1/auth/login", () => {
       const daysDiff =
         (new Date(body.data.expiresAt).getTime() - Date.now()) / 86_400_000;
       expect(daysDiff).toBeGreaterThan(28);
+    });
+
+    it("stores only the SHA-256 hash of the session token in the database", async () => {
+      const res = await login({ username: "admin", pin: TEST_PIN_ADMIN });
+      const token = res.headers.get("Set-Cookie")?.split(";")[0].split("=")[1];
+      if (!token) throw new Error("Cookie missing");
+
+      const [byRawToken] = await db
+        .select()
+        .from(schema.sessions)
+        .where(eq(schema.sessions.id, token));
+      const [byHash] = await db
+        .select()
+        .from(schema.sessions)
+        .where(eq(schema.sessions.id, await hashSessionToken(token)));
+
+      expect(byRawToken).toBeUndefined();
+      expect(byHash).toBeDefined();
     });
   });
 

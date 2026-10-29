@@ -26,6 +26,7 @@ export type AuthUser = {
 };
 
 export type AuthSession = {
+  /** SHA-256 của session token (giá trị lưu trong DB), KHÔNG phải token gốc trong cookie */
   id: string;
   userId: number;
   userAgent: string | null;

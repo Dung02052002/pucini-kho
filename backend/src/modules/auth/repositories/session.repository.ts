@@ -2,6 +2,11 @@ import { eq } from "drizzle-orm";
 import type { Database } from "../../../db/client";
 import { type NewSession, type Session, sessions } from "../../../db/schema";
 
+/**
+ * Lưu ý: `sessions.id` là SHA-256 của token (xem lib/crypto/token.ts),
+ * mọi hàm ở đây nhận/trả giá trị hash, không bao giờ nhận token gốc.
+ */
+
 export async function createSession(
   db: Database,
   session: NewSession,

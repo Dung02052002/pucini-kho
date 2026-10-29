@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
 import type { AppEnv } from "../../env";
+import { hashSessionToken } from "../../lib/crypto";
 import { isExpired } from "../../lib/time";
 import { findSessionById } from "../../modules/auth/repositories/session.repository";
 import {
@@ -9,23 +10,38 @@ import {
 } from "../../modules/auth/repositories/user.repository";
 import { SESSION_COOKIE_NAME } from "../../shared/constants";
 
+/** Token hợp lệ là base64url của 32 byte = 43 ký tự; chặn sớm giá trị rác trước khi hash/query DB */
+const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+
 /**
- * Global authentication middleware
- * Parses session cookie or Authorization Bearer token and populates c.var.user and c.var.session
- * Middleware này KHÔNG chặn request; việc chặn do các guard đảm nhiệm.
+ * Lấy session token từ cookie (ưu tiên) hoặc header `Authorization: Bearer <token>`.
  */
-export const authMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
-  const cookieSessionId = getCookie(c, SESSION_COOKIE_NAME);
-  const authHeader = c.req.header("authorization");
-  const bearerSessionId = authHeader?.startsWith("Bearer ")
+function extractSessionToken(
+  cookieValue: string | undefined,
+  authHeader: string | undefined,
+): string | undefined {
+  const bearer = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7).trim()
     : undefined;
+  const token = cookieValue || bearer;
+  return token && SESSION_TOKEN_PATTERN.test(token) ? token : undefined;
+}
 
-  const sessionId = cookieSessionId || bearerSessionId;
+/**
+ * Global authentication middleware
+ * Đọc session token → hash → tra DB → gán c.var.user và c.var.session.
+ * Middleware này KHÔNG chặn request; việc chặn do requireAuthByDefault / guards đảm nhiệm.
+ * Quyền và trạng thái active được đọc lại mỗi request nên khóa user có hiệu lực ngay.
+ */
+export const authMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const token = extractSessionToken(
+    getCookie(c, SESSION_COOKIE_NAME),
+    c.req.header("authorization"),
+  );
 
-  if (sessionId) {
+  if (token) {
     const db = c.get("db");
-    const session = await findSessionById(db, sessionId);
+    const session = await findSessionById(db, await hashSessionToken(token));
 
     if (session && !isExpired(session.expiresAt)) {
       const user = await findUserById(db, session.userId);
