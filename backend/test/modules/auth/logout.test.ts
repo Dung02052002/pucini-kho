@@ -1,5 +1,9 @@
+import { desc } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../../src/app";
+import { getDb } from "../../../src/db/client";
+import * as schema from "../../../src/db/schema";
+import { AUDIT_ACTIONS } from "../../../src/modules/audit/audit.actions";
 import {
   apiRequest,
   loginAndGetCookie,
@@ -17,7 +21,7 @@ describe("POST /api/v1/auth/logout", () => {
     await setupTestDatabase(testEnv);
   });
 
-  it("deletes the session and clears the cookie", async () => {
+  it("deletes the session, clears the cookie and writes an audit entry", async () => {
     const cookie = await loginAndGetCookie(app, "admin", TEST_PIN_ADMIN);
 
     const logoutRes = await apiRequest(app, LOGOUT_PATH, {
@@ -32,6 +36,13 @@ describe("POST /api/v1/auth/logout", () => {
     // Session cũ không còn dùng được
     const meRes = await apiRequest(app, "/api/v1/auth/me", { cookie });
     expect(meRes.status).toBe(401);
+
+    const [entry] = await getDb(testEnv)
+      .select()
+      .from(schema.auditLog)
+      .orderBy(desc(schema.auditLog.id))
+      .limit(1);
+    expect(entry.action).toBe(AUDIT_ACTIONS.AUTH_LOGOUT);
   });
 
   it("succeeds without a session (idempotent)", async () => {

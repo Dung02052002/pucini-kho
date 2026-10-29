@@ -9,6 +9,8 @@ import {
 import { AccountLockedError, UnauthenticatedError } from "../../../lib/errors";
 import type { RequestMeta } from "../../../lib/request-meta";
 import { addDays, addHours, addMinutes, nowUtc } from "../../../lib/time";
+import { AUDIT_ACTIONS } from "../../audit/audit.actions";
+import { logAudit } from "../../audit/services/log-audit.service";
 import {
   ACCOUNT_LOCK_MINUTES,
   INVALID_CREDENTIALS_MESSAGE,
@@ -43,7 +45,7 @@ export interface LoginResult {
  *    (thời gian phản hồi như sai PIN) rồi trả thông báo chung.
  * 2. Giữ chỗ 1 lượt thử bằng UPDATE nguyên tử; tài khoản đang khóa → 423.
  * 3. Verify PIN. Sai → 401 (hoặc 423 nếu lượt này chạm ngưỡng khóa).
- * 4. Đúng → reset bộ đếm, tạo session (DB lưu hash của token).
+ * 4. Đúng → reset bộ đếm, tạo session (DB lưu hash của token), ghi audit.
  *
  * Đánh đổi có chủ đích: lỗi 423 vẫn cho biết username tồn tại, vì nhân viên kho
  * cần biết mình bị khóa. Rủi ro dò username được giảm bằng rate limit theo IP.
@@ -58,6 +60,16 @@ export async function loginUser(
   // Bước 1: user không hợp lệ — không tiết lộ lý do cụ thể cho client
   if (!user || user.active === 0) {
     await verifyAgainstDummyHash(input.pin);
+    await logAudit(db, {
+      userId: user?.id ?? null,
+      action: AUDIT_ACTIONS.AUTH_LOGIN_FAILED,
+      entity: "user",
+      payload: {
+        username: input.username,
+        reason: user ? "INACTIVE" : "UNKNOWN_USER",
+        ...meta,
+      },
+    });
     throw new UnauthenticatedError(INVALID_CREDENTIALS_MESSAGE);
   }
 
@@ -79,7 +91,19 @@ export async function loginUser(
   const isPinValid = await verifyPin(input.pin, user.pinHash);
 
   if (!isPinValid) {
-    if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+    const isNowLocked = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+
+    await logAudit(db, {
+      userId: user.id,
+      action: isNowLocked
+        ? AUDIT_ACTIONS.AUTH_ACCOUNT_LOCKED
+        : AUDIT_ACTIONS.AUTH_LOGIN_FAILED,
+      entity: "user",
+      entityId: String(user.id),
+      payload: { reason: "WRONG_PIN", attempts, ...meta },
+    });
+
+    if (isNowLocked) {
       throw new AccountLockedError(
         `Bạn đã nhập sai mã PIN ${MAX_FAILED_LOGIN_ATTEMPTS} lần liên tiếp. Tài khoản đã bị tạm khóa ${ACCOUNT_LOCK_MINUTES} phút.`,
       );
@@ -104,6 +128,14 @@ export async function loginUser(
     userAgent: meta.userAgent,
     createdAt: nowUtc(),
     expiresAt,
+  });
+
+  await logAudit(db, {
+    userId: user.id,
+    action: AUDIT_ACTIONS.AUTH_LOGIN_SUCCESS,
+    entity: "user",
+    entityId: String(user.id),
+    payload: { remember: input.remember, ...meta },
   });
 
   return {

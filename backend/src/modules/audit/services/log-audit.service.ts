@@ -1,10 +1,11 @@
 import type { Database } from "../../../db/client";
 import { nowUtc } from "../../../lib/time";
+import type { AuditAction } from "../audit.actions";
 import { insertAuditLog } from "../repositories/audit-log.repository";
 
 export interface LogAuditParams {
   userId?: number | null;
-  action: string;
+  action: AuditAction;
   entity?: string | null;
   entityId?: string | null;
   payload?: unknown;

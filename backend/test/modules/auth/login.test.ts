@@ -1,10 +1,11 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../../src/app";
 import { getDb } from "../../../src/db/client";
 import * as schema from "../../../src/db/schema";
 import { hashSessionToken } from "../../../src/lib/crypto";
 import { addMinutes } from "../../../src/lib/time";
+import { AUDIT_ACTIONS } from "../../../src/modules/audit/audit.actions";
 import { INVALID_CREDENTIALS_MESSAGE } from "../../../src/modules/auth/auth.policy";
 import { ERROR_CODES } from "../../../src/shared/constants";
 import { apiRequest, parseJson, testEnv } from "../../helpers/http";
@@ -89,6 +90,20 @@ describe("POST /api/v1/auth/login", () => {
       expect(byRawToken).toBeUndefined();
       expect(byHash).toBeDefined();
     });
+
+    it("writes an AUTH_LOGIN_SUCCESS audit entry", async () => {
+      await login({ username: "nhanvien1", pin: TEST_PIN_STAFF });
+
+      const [entry] = await db
+        .select()
+        .from(schema.auditLog)
+        .orderBy(desc(schema.auditLog.id))
+        .limit(1);
+      expect(entry.action).toBe(AUDIT_ACTIONS.AUTH_LOGIN_SUCCESS);
+      expect(entry.userId).toBe(2);
+      // Audit không bao giờ chứa PIN
+      expect(entry.payloadJson).not.toContain(TEST_PIN_STAFF);
+    });
   });
 
   describe("validation", () => {
@@ -146,6 +161,14 @@ describe("POST /api/v1/auth/login", () => {
       expect(lockRes.status).toBe(423);
       const lockBody = await parseJson(lockRes);
       expect(lockBody.error.code).toBe(ERROR_CODES.ACCOUNT_LOCKED);
+
+      const [auditEntry] = await db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.action, AUDIT_ACTIONS.AUTH_ACCOUNT_LOCKED))
+        .orderBy(desc(schema.auditLog.id))
+        .limit(1);
+      expect(auditEntry.userId).toBe(101);
 
       // Kể cả PIN đúng cũng bị chặn khi đang khóa
       const correctRes = await login({
