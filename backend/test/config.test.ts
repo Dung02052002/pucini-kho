@@ -38,7 +38,7 @@ describe("getConfig", () => {
       getConfig({
         ...baseEnv,
         ENVIRONMENT: "production",
-        CORS_ORIGINS: "https://kho.pucini.vn",
+        CORS_ORIGINS: "https://kho.ql.vn",
       }),
     ).not.toThrow();
   });

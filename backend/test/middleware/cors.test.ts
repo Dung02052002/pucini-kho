@@ -26,12 +26,12 @@ describe("CORS whitelist", () => {
 
   it("uses the CORS_ORIGINS env variable when provided", async () => {
     const res = await apiRequest(app, "/api/v1/health", {
-      headers: { Origin: "https://kho.pucini.vn" },
-      env: { ...testEnv, CORS_ORIGINS: "https://kho.pucini.vn" },
+      headers: { Origin: "https://kho.ql.vn" },
+      env: { ...testEnv, CORS_ORIGINS: "https://kho.ql.vn" },
     });
 
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe(
-      "https://kho.pucini.vn",
+      "https://kho.ql.vn",
     );
   });
 });
