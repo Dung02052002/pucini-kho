@@ -1,5 +1,5 @@
 {
-  "name": "pucini-kho-backend",
+  "name": "kho-backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "lint": "biome check src test",
     "format": "biome format --write src test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply pucini-kho --local",
-    "db:migrate:remote": "wrangler d1 migrations apply pucini-kho --remote",
+    "db:migrate:local": "wrangler d1 migrations apply kho-ql --local",
+    "db:migrate:remote": "wrangler d1 migrations apply kho-ql --remote",
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {

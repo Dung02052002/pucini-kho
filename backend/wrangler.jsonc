@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "pucini-kho-backend",
+  "name": "kho-backend",
   "main": "src/index.ts",
   "compatibility_date": "2025-02-14",
   "compatibility_flags": [
@@ -9,8 +9,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "pucini-kho",
-      "database_id": "pucini-kho-database-id"
+      "database_name": "kho-ql",
+      "database_id": "your-d1-database-id"
     }
   ],
   "triggers": {
@@ -20,5 +20,11 @@
       "0 11 * * *",
       "0 20 * * *"
     ]
+  },
+  // Phục vụ frontend (SPA) từ cùng Worker; request /api/* luôn đi vào Worker trước
+  "assets": {
+    "directory": "../frontend/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
   }
 }
