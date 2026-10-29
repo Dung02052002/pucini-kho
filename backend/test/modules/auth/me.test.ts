@@ -62,4 +62,12 @@ describe("GET /api/v1/auth/me", () => {
     expect(unknown.status).toBe(401);
     expect(malformed.status).toBe(401);
   });
+
+  it("disables caching of the user profile response", async () => {
+    const cookie = await loginAndGetCookie(app, "admin", TEST_PIN_ADMIN);
+
+    const res = await apiRequest(app, ME_PATH, { cookie });
+
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
 });

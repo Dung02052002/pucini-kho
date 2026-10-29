@@ -6,6 +6,7 @@ import { dbMiddleware } from "./middleware/core/db";
 import { errorHandler, notFoundHandler } from "./middleware/core/error-handler";
 import { loggerMiddleware } from "./middleware/core/logger";
 import { requestIdMiddleware } from "./middleware/core/request-id";
+import { bodyLimitMiddleware } from "./middleware/security/body-limit";
 import { corsMiddleware } from "./middleware/security/cors";
 import { csrfProtection } from "./middleware/security/csrf";
 import { securityHeadersMiddleware } from "./middleware/security/security-headers";
@@ -23,6 +24,7 @@ export function createApp(): Hono<AppEnv> {
   // 2. Bảo mật tầng HTTP: chạy trước khi đụng tới DB để chặn request xấu sớm và rẻ
   app.use("*", securityHeadersMiddleware);
   app.use("*", corsMiddleware()); // xử lý preflight OPTIONS trước CSRF
+  app.use("*", bodyLimitMiddleware());
   app.use("*", csrfProtection);
   // 3. Xác thực: nạp session, sau đó chặn mọi route không nằm trong PUBLIC_ROUTES
   app.use("*", dbMiddleware);

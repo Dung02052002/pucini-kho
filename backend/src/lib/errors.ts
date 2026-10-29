@@ -126,6 +126,15 @@ export class SyncThrottledError extends AppError {
   }
 }
 
+export class PayloadTooLargeError extends AppError {
+  constructor(
+    message: string = ERROR_MESSAGES.PAYLOAD_TOO_LARGE,
+    details?: unknown,
+  ) {
+    super(message, 413, ERROR_CODES.PAYLOAD_TOO_LARGE, details);
+  }
+}
+
 export class KvUpstreamError extends AppError {
   constructor(
     message: string = ERROR_MESSAGES.KV_UPSTREAM_ERROR,

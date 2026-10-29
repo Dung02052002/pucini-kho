@@ -7,8 +7,7 @@ import { generateRequestId } from "../../lib/ids";
 import { ERROR_CODES, ERROR_MESSAGES } from "../../shared/constants";
 
 export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
-  const requestId =
-    c.get("requestId") || c.req.header("x-request-id") || generateRequestId();
+  const requestId = c.get("requestId") || generateRequestId();
 
   let status: ContentfulStatusCode = 500;
   let code: string = ERROR_CODES.INTERNAL_SERVER_ERROR;
@@ -63,8 +62,7 @@ export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
 };
 
 export const notFoundHandler: NotFoundHandler<AppEnv> = (c) => {
-  const requestId =
-    c.get("requestId") || c.req.header("x-request-id") || generateRequestId();
+  const requestId = c.get("requestId") || generateRequestId();
 
   return c.json(
     {

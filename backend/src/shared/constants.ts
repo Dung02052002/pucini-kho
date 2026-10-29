@@ -21,6 +21,7 @@ export const ERROR_CODES = {
   ALREADY_CANCELED: "ALREADY_CANCELED",
   BATCH_NOT_OPEN: "BATCH_NOT_OPEN",
   SYNC_THROTTLED: "SYNC_THROTTLED",
+  PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
   KV_UPSTREAM_ERROR: "KV_UPSTREAM_ERROR",
   INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
 } as const;
@@ -43,6 +44,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   ALREADY_CANCELED: "Biến động này đã được hủy trước đó",
   BATCH_NOT_OPEN: "Đợt soạn hàng đã hoàn tất hoặc không còn mở",
   SYNC_THROTTLED: "Hệ thống đang đồng bộ, vui lòng thử lại sau 60 giây",
+  PAYLOAD_TOO_LARGE: "Dữ liệu gửi lên vượt quá kích thước cho phép",
   KV_UPSTREAM_ERROR: "Lỗi kết nối hoặc phản hồi từ KiotViet",
   INTERNAL_SERVER_ERROR: "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau",
 };

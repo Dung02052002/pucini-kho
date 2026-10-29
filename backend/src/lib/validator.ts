@@ -19,10 +19,7 @@ export const zValidator = <
   honoZValidator(target, schema, (result, c) => {
     if (!result.success) {
       const appCtx = c as unknown as Context<AppEnv>;
-      const requestId =
-        appCtx.get("requestId") ||
-        c.req.header("x-request-id") ||
-        generateRequestId();
+      const requestId = appCtx.get("requestId") || generateRequestId();
 
       return c.json(
         {
