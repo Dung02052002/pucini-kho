@@ -3,9 +3,10 @@ import {
   generateQrToken,
   generateSessionToken,
   hashPin,
+  hashSessionToken,
   timingSafeEqual,
   verifyPin,
-} from "../src/lib/crypto";
+} from "../../src/lib/crypto";
 
 describe("Crypto Utilities Unit Tests", () => {
   describe("PBKDF2 PIN Hashing and Verification", () => {
@@ -37,6 +38,24 @@ describe("Crypto Utilities Unit Tests", () => {
       expect(
         await verifyPin("123456", "pbkdf2$sha256$1000$invalid_b64$hash"),
       ).toBe(false);
+    });
+
+    it("rejects stored hashes with iterations above the Workers limit", async () => {
+      expect(
+        await verifyPin("123456", "pbkdf2$sha256$100000000$c2FsdA==$aGFzaA=="),
+      ).toBe(false);
+    });
+  });
+
+  describe("hashSessionToken", () => {
+    it("is deterministic, base64url and differs from the raw token", async () => {
+      const token = generateSessionToken();
+      const hash1 = await hashSessionToken(token);
+      const hash2 = await hashSessionToken(token);
+
+      expect(hash1).toBe(hash2);
+      expect(hash1).not.toBe(token);
+      expect(hash1).toMatch(/^[A-Za-z0-9_-]{43}$/);
     });
   });
 
