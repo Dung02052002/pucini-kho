@@ -1,0 +1,5 @@
+# Tài liệu nội bộ / cấu hình cá nhân — không đưa lên git
+*.pdf
+.vscode/
+backend/README.md
+backend/http/
